@@ -9,24 +9,39 @@ from sklearn.utils import shuffle
 #
 #####
 
-def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, networkSize = 'Baseline', networkType = 'Real', alpha = 1e-3):
+def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, num_classes = 10, networkSize = 'Baseline', networkType = 'Real', alpha = 1e-3):
+    '''
+    
+    This function is a wrapper used to execute a model for a given algebra type and network size. 
+    Inputs:
+        train - tuple containing (examples, labels, number of examples) for training set
+        validation - tuple containing (examples, labels, number of examples) for validation set
+        train - tuple containing (examples, labels, number of examples) for test set
+        dataset - name of the dataset being tested. Used when saving the model
+        BATCH_SIZE - batch sized used during mini-batch SGD
+        num_classes - number of classes in the classifiction task. Default value is 10.
+        networkSize - type of network to use. Values are 'Baseline', 'Wide', and 'Deep'
+        networkType - algebra type for the layers. Values are 'Real', 'Complex', 'SplitComplex'
+        alpha - learning rate for Adam optimizer
+    
+    '''
     
     X_train, y_train, NUM_TRAIN = train
     X_validation, y_validation, NUM_VAL = val
     X_test, y_test, NUM_TEST = test
     
     # Set up graph for training
-    x = tf.placeholder(tf.float32, (None, 32, 32, 1))
+    x = tf.placeholder(tf.float32, (None, 32, 32, X_train.shape[3]))
     y = tf.placeholder(tf.int32, (None))
-    one_hot_y = tf.one_hot(y, 10)
+    one_hot_y = tf.one_hot(y, num_classes)
 
     # Select computational graph based on network input
     if networkSize=='Baseline':
-        logits = LeNet(x, networkType = networkType)
+        logits = LeNet(x, num_classes = num_classes, inputDim = X_train.shape[3], networkType = networkType)
     elif networkSize=='Wide':
-        logits = LeWideNet(x, networkType = networkType)
+        logits = LeWideNet(x, num_classes = num_classes, inputDim = X_train.shape[3], networkType = networkType)
     elif networkSize=='Deep':
-        logits = LeDeepNet(x, networkType = networkType)
+        logits = LeDeepNet(x, num_classes = num_classes, inputDim = X_train.shape[3], networkType = networkType)
     else:
         raise Exception('Invalid network size entered!')
         
@@ -39,11 +54,11 @@ def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, networkSize = 'Basel
     accuracy_operation = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     saver = tf.train.Saver()
     
-    training_accuracy = np.zeros(int(EPOCHS*len(X_train)/BATCH_SIZE))
+    training_accuracy = np.zeros(int(np.ceil(EPOCHS*len(X_train)/BATCH_SIZE)))
     validation_accuracy = np.zeros(EPOCHS)
     test_accuracy = np.zeros(EPOCHS)
     
-    training_loss = np.zeros(int(EPOCHS*len(X_train)/BATCH_SIZE))
+    training_loss = np.zeros(int(np.ceil(EPOCHS*len(X_train)/BATCH_SIZE)))
     validation_loss = np.zeros(EPOCHS)
     test_loss = np.zeros(EPOCHS)
     
@@ -102,7 +117,7 @@ def evaluateAcc(X_data, y_data):
     return total_accuracy / num_examples
 '''
     
-def LeNet(x, inputDim = 1, mu = 0, sigma = 0.1, networkType = 'Real'):
+def LeNet(x, inputDim = 1, num_classes = 10, mu = 0, sigma = 0.1, networkType = 'Real'):
     
     if networkType is not 'Real':
         x = layersHDA.typeClone(x, networkType)
@@ -142,12 +157,12 @@ def LeNet(x, inputDim = 1, mu = 0, sigma = 0.1, networkType = 'Real'):
     fc2 = layersHDA.relu(fc2)
 
     # Layer 5: Fully Connected. Input = 84. Output = 10.
-    fc3 = layersHDA.affine(fc2, weightShape = (84, 10), biasDim = 10)
+    fc3 = layersHDA.affine(fc2, weightShape = (84, num_classes), biasDim = num_classes)
     logits = layersHDA.magnitude(fc3)
     
     return logits
 
-def LeWideNet(x, inputDim = 1, mu = 0, sigma = 0.1, networkType = 'Real'):
+def LeWideNet(x, inputDim = 1, num_classes = 10, mu = 0, sigma = 0.1, networkType = 'Real'):
     
     if networkType is not 'Real':
         x = layersHDA.typeClone(x, networkType)
@@ -186,13 +201,13 @@ def LeWideNet(x, inputDim = 1, mu = 0, sigma = 0.1, networkType = 'Real'):
     fc2 = layersHDA.relu(fc2)
 
     # Layer 5: Fully Connected. Input = 84. Output = 10.
-    fc3 = layersHDA.affine(fc2, weightShape = (119, 10), biasDim = 10)
+    fc3 = layersHDA.affine(fc2, weightShape = (119, num_classes), biasDim = num_classes)
     logits = layersHDA.magnitude(fc3)
     
     return logits
 
 
-def LeDeepNet(x, inputDim = 1, mu = 0, sigma = 0.1, networkType = 'Real'):
+def LeDeepNet(x, inputDim = 1, num_classes = 10, mu = 0, sigma = 0.1, networkType = 'Real'):
     
     if networkType is not 'Real':
         x = layersHDA.typeClone(x, networkType)
@@ -264,7 +279,7 @@ def LeDeepNet(x, inputDim = 1, mu = 0, sigma = 0.1, networkType = 'Real'):
     
     ############
     # Layer 5: Fully Connected. Input = 84. Output = 10.
-    fc3 = layersHDA.affine(fc2b, weightShape = (84, 10), biasDim = 10)
+    fc3 = layersHDA.affine(fc2b, weightShape = (84, num_classes), biasDim = num_classes)
     logits = layersHDA.magnitude(fc3)
     
     return logits
