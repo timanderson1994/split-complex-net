@@ -144,9 +144,9 @@ def flatten(x):
     '''
     
     if type(x) is TFHDA:
-        out = TFHDA(tf.contrib.layers.flatten(x.r), tf.contrib.layers.flatten(x.i))
+        out = TFHDA(tf.squeeze(x.r), tf.squeeze(x.i))
     else:
-        out = tf.contrib.layers.flatten(x)
+        out = tf.squeeze(x)
     
     return out
 

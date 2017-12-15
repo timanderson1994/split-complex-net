@@ -9,7 +9,7 @@ from sklearn.utils import shuffle
 #
 #####
 
-def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, num_classes = 10, networkSize = 'Baseline', networkType = 'Real', alpha = 1e-3):
+def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, num_classes = 10, networkSize = 'Baseline', networkType = 'Real', alpha = 1e-3, lam = 0):
     '''
     
     This function is a wrapper used to execute a model for a given algebra type and network size. 
@@ -23,6 +23,7 @@ def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, num_classes = 10, ne
         networkSize - type of network to use. Values are 'Baseline', 'Wide', and 'Deep'
         networkType - algebra type for the layers. Values are 'Real', 'Complex', 'SplitComplex'
         alpha - learning rate for Adam optimizer
+        lam - regularization parameter. Default is zero i.e. no regularization
     
     '''
     
@@ -46,7 +47,13 @@ def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, num_classes = 10, ne
         raise Exception('Invalid network size entered!')
         
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits = logits, labels = one_hot_y)
-    loss_operation = tf.reduce_mean(cross_entropy)
+    
+    # Add regularization loss
+    params = tf.trainable_variables() 
+    reg_loss = tf.add_n([ tf.nn.l2_loss(v) for v in params ])
+    
+    # Calculate loss
+    loss_operation = tf.reduce_mean(cross_entropy) + lam*reg_loss
     optimizer = tf.train.AdamOptimizer(learning_rate = alpha)
     training_operation = optimizer.minimize(loss_operation)
 
@@ -83,27 +90,27 @@ def runmodel(train, val, test, dataset, BATCH_SIZE, EPOCHS, num_classes = 10, ne
                 train_loss_count +=1
             
             
-            validation_accuracy[i] = sess.run(accuracy_operation, 
-                                              feed_dict={x: X_validation, y: y_validation}) 
+            validation_accuracy[i] = sess.run(accuracy_operation, feed_dict={x: X_validation, y: y_validation}) 
             test_accuracy[i] = sess.run(accuracy_operation, feed_dict={x: X_test, y: y_test}) 
             
             validation_loss[i] = sess.run(loss_operation, feed_dict={x: X_validation, y: y_validation})
             test_loss[i] = sess.run(loss_operation, feed_dict={x: X_test, y: y_test})
             
             print("EPOCH {} ...".format(i+1))
+            print("Training Accuracy = {:.3f}".format(training_accuracy[train_loss_count-1]))
             print("Validation Accuracy = {:.3f}".format(validation_accuracy[i]))
             print()
         
-        saver.save(sess, 'lenet'+'_'+dataset+'_'+networkSize+'_'+networkType)
+        saver.save(sess, 'ExperimentModels/lenet'+'_'+dataset+'_'+networkSize+'_'+networkType)
         print("Model saved")
     
-    np.savez('lenet'+'_'+dataset+'_'+networkSize+'_'+networkType+'_loss.npz', 
+    np.savez('ExperimentData/lenet'+'_'+dataset+'_'+networkSize+'_'+networkType+'_loss.npz', 
              training_loss, validation_loss, test_loss)
-    np.savez('lenet'+'_'+dataset+'_'+networkSize+'_'+networkType+'_acc.npz', 
+    np.savez('ExperimentData/lenet'+'_'+dataset+'_'+networkSize+'_'+networkType+'_acc.npz', 
              training_accuracy, validation_accuracy, test_accuracy)
     
     with tf.Session() as sess:
-        saver.restore(sess, tf.train.latest_checkpoint('.')) 
+        saver.restore(sess, tf.train.latest_checkpoint('./ExperimentModels')) 
         test_accuracy = sess.run(accuracy_operation, feed_dict={x: X_test, y: y_test})
         print("Test Accuracy = {:.3f}".format(test_accuracy))
 
