@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+'''
+Functions to define and build the models
 
-class ModelParams():
-    
-    def __init__(self):
-        pass
+'''
